@@ -1021,8 +1021,6 @@ $DAEMONOPTS
 
         bluestore fsck on mount = true
         bluestore block create = true
-        bluestore allocator = bitmap
-        bluestore alloc favor spatial locality = false
         
 $BLUESTORE_OPTS
 
@@ -1662,7 +1660,7 @@ if [ -z "$CEPH_PORT" ]; then
     while [ true ]
     do
         CEPH_PORT="$(echo $(( RANDOM % 1000 + 40000 )))"
-        ss -a -n | egrep "\<LISTEN\>.+:${CEPH_PORT}\s+" 1>/dev/null 2>&1 || break
+        ss -a -n | grep -E "\<LISTEN\>.+:${CEPH_PORT}\s+" 1>/dev/null 2>&1 || break
     done
 fi
 

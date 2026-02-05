@@ -10,14 +10,15 @@ from libc.stdint cimport *
 from libc.stdlib cimport malloc, realloc, free
 
 from types cimport *
-IF BUILD_DOC:
-    include "mock_cephfs.pxi"
-    cdef class Rados:
-        cdef:
-            rados_t cluster
-ELSE:
-    from c_cephfs cimport *
-    from rados cimport Rados
+{{if BUILD_DOC}}
+include "mock_cephfs.pxi"
+cdef class Rados:
+    cdef:
+        rados_t cluster
+{{else}}
+from c_cephfs cimport *
+from rados cimport Rados
+{{endif}}
 
 from collections import namedtuple, deque
 from datetime import datetime
@@ -120,7 +121,6 @@ cdef extern from "Python.h":
     PyObject *PyBytes_FromStringAndSize(char *v, Py_ssize_t len) except NULL
     char* PyBytes_AsString(PyObject *string) except NULL
     int _PyBytes_Resize(PyObject **string, Py_ssize_t newsize) except -1
-    void PyEval_InitThreads()
 
 cdef void completion_callback(int rc, const void* out, size_t outlen, const void* outs, size_t outslen, void* ud) nogil:
     # This GIL awkwardness is due to incompatible types with function pointers defined with mds_command2:
@@ -515,7 +515,6 @@ cdef class LibCephFS(object):
         :auth_id str opt: the id used to authenticate the client entity
         :rados_inst Rados opt: a rados.Rados instance
         """
-        PyEval_InitThreads()
         self.state = "uninitialized"
         if rados_inst is not None:
             if auth_id is not None or conffile is not None or conf is not None:
@@ -2041,6 +2040,7 @@ cdef class LibCephFS(object):
             char *_dpath = dpath
             mode_t _mode = mode
 
+        with nogil:
             ret = ceph_fcopyfile(self.cluster, _spath, _dpath, _mode)
 
         if ret < 0:

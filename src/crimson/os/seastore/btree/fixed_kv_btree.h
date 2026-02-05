@@ -8,6 +8,7 @@
 #include <memory>
 #include <string.h>
 
+#include "crimson/common/coroutine.h"
 #include "crimson/os/seastore/logging.h"
 
 #include "crimson/os/seastore/cache.h"
@@ -288,9 +289,7 @@ public:
         ctx,
 	leaf.node,
         leaf.node->modifications,
-        is_end() ? min_max_t<node_key_t>::max : get_key(),
-        is_end() ? std::nullopt : std::make_optional(get_val()),
-        leaf.pos);
+        typename leaf_node_t::iterator(leaf.node.get(), leaf.pos));
     }
 
     typename leaf_node_t::Ref get_leaf_node() {
@@ -492,8 +491,8 @@ public:
     return make_partial_iter(
       c,
       cursor.parent->template cast<leaf_node_t>(),
-      cursor.key,
-      cursor.pos);
+      cursor.get_key(),
+      cursor.get_pos());
   }
 
   boost::intrusive_ptr<cursor_t> get_cursor(
@@ -505,7 +504,7 @@ public:
     assert(it != leaf->end());
     return new cursor_t(
       c, leaf, leaf->modifications,
-      key, it.get_val(), it.get_offset());
+      typename leaf_node_t::iterator(leaf.get(), it.get_offset()));
   }
 
   boost::intrusive_ptr<cursor_t> get_cursor(
@@ -1381,9 +1380,7 @@ private:
 #endif
     ret.leaf.node = leaf;
     ret.leaf.pos = pos;
-    if (ret.is_end()) {
-      ceph_assert(key == min_max_t<node_key_t>::max);
-    } else {
+    if (!ret.is_end()) {
       ceph_assert(key == ret.get_key());
     }
     return ret;
@@ -2361,6 +2358,13 @@ private:
 
 template <typename T>
 struct is_fixed_kv_tree : std::false_type {};
+
+template <typename tree_type_t>
+Cache::get_root_iertr::future<tree_type_t>
+get_btree(op_context_t c) {
+  auto cache_root = co_await c.cache.get_root(c.trans);
+  co_return tree_type_t(cache_root);
+}
 
 template <
   typename node_key_t,

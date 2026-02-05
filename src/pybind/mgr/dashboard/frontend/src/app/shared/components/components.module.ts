@@ -42,7 +42,9 @@ import {
   PopoverModule,
   InlineLoadingModule,
   TagModule,
-  LinkModule
+  LinkModule,
+  LayerModule,
+  ThemeModule
 } from 'carbon-components-angular';
 import EditIcon from '@carbon/icons/es/edit/20';
 import CodeIcon from '@carbon/icons/es/code/16';
@@ -99,9 +101,14 @@ import { TearsheetComponent } from './tearsheet/tearsheet.component';
 import InfoIcon from '@carbon/icons/es/information/16';
 import CopyIcon from '@carbon/icons/es/copy/32';
 import downloadIcon from '@carbon/icons/es/download/16';
-import IdeaIcon from '@carbon/icons/es/idea/20';
+import CheckmarkFilledIcon from '@carbon/icons/es/checkmark--filled/16';
+import ErrorFilledIcon from '@carbon/icons/es/error--filled/16';
+import InformationFilledIcon from '@carbon/icons/es/information--filled/16';
+import WarningFilledIcon from '@carbon/icons/es/warning--filled/16';
+import NotificationFilledIcon from '@carbon/icons/es/notification--filled/16';
 import CloseIcon from '@carbon/icons/es/close/16';
 import { TearsheetStepComponent } from './tearsheet-step/tearsheet-step.component';
+import { ProductiveCardComponent } from './productive-card/productive-card.component';
 
 @NgModule({
   imports: [
@@ -148,7 +155,9 @@ import { TearsheetStepComponent } from './tearsheet-step/tearsheet-step.componen
     PopoverModule,
     InlineLoadingModule,
     TagModule,
-    LinkModule
+    LinkModule,
+    LayerModule,
+    ThemeModule
   ],
   declarations: [
     SparklineComponent,
@@ -196,7 +205,8 @@ import { TearsheetStepComponent } from './tearsheet-step/tearsheet-step.componen
     DetailsCardComponent,
     ToastComponent,
     TearsheetComponent,
-    TearsheetStepComponent
+    TearsheetStepComponent,
+    ProductiveCardComponent
   ],
   providers: [provideCharts(withDefaultRegisterables())],
   exports: [
@@ -241,7 +251,8 @@ import { TearsheetStepComponent } from './tearsheet-step/tearsheet-step.componen
     DetailsCardComponent,
     ToastComponent,
     TearsheetComponent,
-    TearsheetStepComponent
+    TearsheetStepComponent,
+    ProductiveCardComponent
   ]
 })
 export class ComponentsModule {
@@ -252,7 +263,11 @@ export class ComponentsModule {
       EditIcon,
       CodeIcon,
       downloadIcon,
-      IdeaIcon,
+      CheckmarkFilledIcon,
+      ErrorFilledIcon,
+      InformationFilledIcon,
+      WarningFilledIcon,
+      NotificationFilledIcon,
       CloseIcon
     ]);
   }

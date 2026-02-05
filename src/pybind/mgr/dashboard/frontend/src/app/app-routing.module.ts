@@ -60,6 +60,8 @@ import { SmbUsersgroupsListComponent } from './ceph/smb/smb-usersgroups-list/smb
 import { SmbOverviewComponent } from './ceph/smb/smb-overview/smb-overview.component';
 import { MultiClusterFormComponent } from './ceph/cluster/multi-cluster/multi-cluster-form/multi-cluster-form.component';
 import { CephfsMirroringListComponent } from './ceph/cephfs/cephfs-mirroring-list/cephfs-mirroring-list.component';
+import { NotificationsPageComponent } from './core/navigation/notification-panel/notifications-page/notifications-page.component';
+import { CephfsMirroringWizardComponent } from './ceph/cephfs/cephfs-mirroring-wizard/cephfs-mirroring-wizard.component';
 
 @Injectable()
 export class PerformanceCounterBreadcrumbsResolver extends BreadcrumbsResolver {
@@ -94,8 +96,8 @@ export class StartCaseBreadcrumbsResolver extends BreadcrumbsResolver {
 }
 
 const routes: Routes = [
-  // Dashboard
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  // Overview
+  { path: '', redirectTo: 'overview', pathMatch: 'full' },
   { path: 'api-docs', component: ApiDocsComponent },
   {
     path: '',
@@ -103,10 +105,16 @@ const routes: Routes = [
     canActivate: [AuthGuardService, ChangePasswordGuardService],
     canActivateChild: [AuthGuardService, ChangePasswordGuardService],
     children: [
-      { path: 'dashboard', component: DashboardComponent },
+      { path: 'overview', component: DashboardComponent },
       { path: 'error', component: ErrorComponent },
-
       // Cluster
+      {
+        path: 'notifications',
+        data: {
+          breadcrumbs: 'Overview/Notifications'
+        },
+        component: NotificationsPageComponent
+      },
       {
         path: 'expand-cluster',
         component: CreateClusterComponent,
@@ -114,7 +122,7 @@ const routes: Routes = [
         data: {
           moduleStatusGuardConfig: {
             uiApiPath: 'orchestrator',
-            redirectTo: 'dashboard',
+            redirectTo: 'overview',
             backend: 'cephadm'
           },
           breadcrumbs: 'Cluster/Expand Cluster'
@@ -421,6 +429,11 @@ const routes: Routes = [
             path: 'mirroring',
             component: CephfsMirroringListComponent,
             data: { breadcrumbs: 'File/Mirroring' }
+          },
+          {
+            path: `mirroring/${URLVerbs.CREATE}`,
+            component: CephfsMirroringWizardComponent,
+            data: { breadcrumbs: ActionLabels.CREATE }
           },
           {
             path: 'nfs',

@@ -33,7 +33,7 @@ from prettytable import PrettyTable
 
 from ceph.cephadm.images import DefaultImages
 from ceph.deployment import inventory
-from ceph.deployment.drive_group import DriveGroupSpec
+from ceph.deployment.drive_group import DriveGroupSpec, OSDType
 from ceph.deployment.service_spec import (
     ServiceSpec,
     PlacementSpec,
@@ -3056,7 +3056,8 @@ Then run the following:
             data_devices=DeviceSelection(paths=devices),
             unmanaged=False,
             method=drive_group.method,
-            objectstore=drive_group.objectstore
+            objectstore=drive_group.objectstore,
+            osd_type=OSDType(drive_group.osd_type)
         )
 
         self.log.info(f"Creating OSDs with service ID: {drive_group.service_id} on {host}:{device_list}")
@@ -3825,6 +3826,7 @@ Then run the following:
                 'jaeger-agent': PlacementSpec(host_pattern='*'),
                 'jaeger-collector': PlacementSpec(count=1),
                 'jaeger-query': PlacementSpec(count=1),
+                'node-proxy': PlacementSpec(host_pattern='*'),
                 SMBService.TYPE: PlacementSpec(count=1),
             }
             spec.placement = defaults[spec.service_type]

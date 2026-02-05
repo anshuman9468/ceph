@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 
 import _ from 'lodash';
 import { Observable, of as observableOf } from 'rxjs';
-import { catchError, mapTo } from 'rxjs/operators';
+import { catchError, map, mapTo } from 'rxjs/operators';
 import { CephServiceSpec } from '../models/service.interface';
 
 export const DEFAULT_MAX_NAMESPACE_PER_SUBSYSTEM = 512;
@@ -91,12 +91,7 @@ export class NvmeofService {
     return this.http.get(`${API_PATH}/subsystem/${subsystemNQN}?gw_group=${group}`);
   }
 
-  createSubsystem(request: {
-    nqn: string;
-    enable_ha: boolean;
-    gw_group: string;
-    max_namespaces?: number;
-  }) {
+  createSubsystem(request: { nqn: string; enable_ha: boolean; gw_group: string }) {
     return this.http.post(`${API_PATH}/subsystem`, request, { observe: 'response' });
   }
 
@@ -168,8 +163,8 @@ export class NvmeofService {
   }
 
   // Namespaces
-  listNamespaces(subsystemNQN: string, group: string) {
-    return this.http.get(`${API_PATH}/subsystem/${subsystemNQN}/namespace?gw_group=${group}`);
+  listNamespaces(group: string) {
+    return this.http.get(`${API_PATH}/gateway_group/${group}/namespace`);
   }
 
   getNamespace(subsystemNQN: string, nsid: string, group: string) {
@@ -196,6 +191,22 @@ export class NvmeofService {
       {
         observe: 'response'
       }
+    );
+  }
+
+  // Check if gateway group exists
+  exists(groupName: string): Observable<boolean> {
+    return this.listGatewayGroups().pipe(
+      map((groups: CephServiceSpec[][]) => {
+        const groupsList = groups?.[0] ?? [];
+        return groupsList.some((group: CephServiceSpec) => group?.spec?.group === groupName);
+      }),
+      catchError((error: any) => {
+        if (_.isFunction(error?.preventDefault)) {
+          error.preventDefault();
+        }
+        return observableOf(false);
+      })
     );
   }
 }

@@ -1593,13 +1593,16 @@ paths:
   /api/block/pool/{pool_name}/group:
     get:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool to list groups from
         in: path
         name: pool_name
         required: true
         schema:
           type: string
       - allowEmptyValue: true
+        description: Optional RBD namespace within the pool. Provides logical isolation
+          of images. When specified, operations are scoped to that namespace. If omitted,
+          the default namespace is used.
         in: query
         name: namespace
         schema:
@@ -1634,12 +1637,12 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: List groups by pool name
+      summary: List all RBD groups in a pool
       tags:
       - RbdGroup
     post:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool where the group will be created
         in: path
         name: pool_name
         required: true
@@ -1651,9 +1654,12 @@ paths:
             schema:
               properties:
                 name:
-                  description: Name of the group
+                  description: Name for the new group
                   type: string
                 namespace:
+                  description: Optional RBD namespace within the pool. Provides logical
+                    isolation of images. When specified, operations are scoped to
+                    that namespace. If omitted, the default namespace is used.
                   type: string
               required:
               - name
@@ -1680,25 +1686,28 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Create a group
+      summary: Create a new RBD group in the specified pool
       tags:
       - RbdGroup
   /api/block/pool/{pool_name}/group/{group_name}:
     delete:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing the group
         in: path
         name: pool_name
         required: true
         schema:
           type: string
-      - description: Name of the group
+      - description: Name of the group to delete
         in: path
         name: group_name
         required: true
         schema:
           type: string
       - allowEmptyValue: true
+        description: Optional RBD namespace within the pool. Provides logical isolation
+          of images. When specified, operations are scoped to that namespace. If omitted,
+          the default namespace is used.
         in: query
         name: namespace
         schema:
@@ -1725,24 +1734,27 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Delete a group
+      summary: Delete an RBD group. All images must be removed from the group first.
       tags:
       - RbdGroup
     get:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing the group
         in: path
         name: pool_name
         required: true
         schema:
           type: string
-      - description: Name of the group
+      - description: Name of the group to retrieve
         in: path
         name: group_name
         required: true
         schema:
           type: string
       - allowEmptyValue: true
+        description: Optional RBD namespace within the pool. Provides logical isolation
+          of images. When specified, operations are scoped to that namespace. If omitted,
+          the default namespace is used.
         in: query
         name: namespace
         schema:
@@ -1752,21 +1764,16 @@ paths:
           content:
             application/vnd.ceph.api.v1.0+json:
               schema:
-                items:
-                  properties:
-                    group:
-                      description: group name
-                      type: string
-                    images:
-                      description: ''
-                      items:
-                        type: string
-                      type: array
-                  type: object
+                properties:
+                  images:
+                    description: List of images in the group with their pool, namespace,
+                      and name
+                    items:
+                      type: object
+                    type: array
                 required:
-                - group
                 - images
-                type: array
+                type: object
           description: OK
         '400':
           description: Operation exception. Please check the response body for details.
@@ -1779,18 +1786,18 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Get the list of images in a group
+      summary: Get details of a specific RBD group including its member images
       tags:
       - RbdGroup
     put:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing the group
         in: path
         name: pool_name
         required: true
         schema:
           type: string
-      - description: Name of the group
+      - description: Current name of the group
         in: path
         name: group_name
         required: true
@@ -1802,6 +1809,9 @@ paths:
             schema:
               properties:
                 namespace:
+                  description: Optional RBD namespace within the pool. Provides logical
+                    isolation of images. When specified, operations are scoped to
+                    that namespace. If omitted, the default namespace is used.
                   type: string
                 new_name:
                   description: New name for the group
@@ -1833,31 +1843,34 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Update a group (rename)
+      summary: Rename an existing RBD group
       tags:
       - RbdGroup
   /api/block/pool/{pool_name}/group/{group_name}/image:
     delete:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing the group
         in: path
         name: pool_name
         required: true
         schema:
           type: string
-      - description: Name of the group
+      - description: Name of the group to remove the image from
         in: path
         name: group_name
         required: true
         schema:
           type: string
-      - description: Name of the image
+      - description: Name of the image to remove from the group
         in: query
         name: image_name
         required: true
         schema:
           type: string
       - allowEmptyValue: true
+        description: Optional RBD namespace within the pool. Provides logical isolation
+          of images. When specified, operations are scoped to that namespace. If omitted,
+          the default namespace is used.
         in: query
         name: namespace
         schema:
@@ -1884,18 +1897,18 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Remove image from a group
+      summary: Remove an RBD image from a group. The image itself is not deleted.
       tags:
       - RbdGroup
     post:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing both the group and image
         in: path
         name: pool_name
         required: true
         schema:
           type: string
-      - description: Name of the group
+      - description: Name of the group to add the image to
         in: path
         name: group_name
         required: true
@@ -1907,9 +1920,12 @@ paths:
             schema:
               properties:
                 image_name:
-                  description: Name of the image
+                  description: Name of the image to add to the group
                   type: string
                 namespace:
+                  description: Optional RBD namespace within the pool. Provides logical
+                    isolation of images. When specified, operations are scoped to
+                    that namespace. If omitted, the default namespace is used.
                   type: string
               required:
               - image_name
@@ -1936,25 +1952,29 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Add image to a group
+      summary: Add an RBD image to a group. The image must be in the same pool and
+        namespace.
       tags:
       - RbdGroup
   /api/block/pool/{pool_name}/group/{group_name}/snap:
     get:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing the group
         in: path
         name: pool_name
         required: true
         schema:
           type: string
-      - description: Name of the group
+      - description: Name of the group to list snapshots for
         in: path
         name: group_name
         required: true
         schema:
           type: string
       - allowEmptyValue: true
+        description: Optional RBD namespace within the pool. Provides logical isolation
+          of images. When specified, operations are scoped to that namespace. If omitted,
+          the default namespace is used.
         in: query
         name: namespace
         schema:
@@ -1997,18 +2017,18 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: List group snapshots
+      summary: List all snapshots of an RBD group
       tags:
       - RbdGroupSnapshot
     post:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing the group
         in: path
         name: pool_name
         required: true
         schema:
           type: string
-      - description: Name of the group
+      - description: Name of the group to snapshot
         in: path
         name: group_name
         required: true
@@ -2021,12 +2041,15 @@ paths:
               properties:
                 flags:
                   default: 0
-                  description: Snapshot creation flags
+                  description: Snapshot creation flags (optional)
                   type: integer
                 namespace:
+                  description: Optional RBD namespace within the pool. Provides logical
+                    isolation of images. When specified, operations are scoped to
+                    that namespace. If omitted, the default namespace is used.
                   type: string
                 snapshot_name:
-                  description: Name of the snapshot
+                  description: Name for the new snapshot
                   type: string
               required:
               - snapshot_name
@@ -2053,13 +2076,13 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Create a group snapshot
+      summary: Create a crash-consistent snapshot of all images in the group
       tags:
       - RbdGroupSnapshot
   /api/block/pool/{pool_name}/group/{group_name}/snap/{snapshot_name}:
     delete:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing the group
         in: path
         name: pool_name
         required: true
@@ -2071,13 +2094,16 @@ paths:
         required: true
         schema:
           type: string
-      - description: Name of the snapshot
+      - description: Name of the snapshot to delete
         in: path
         name: snapshot_name
         required: true
         schema:
           type: string
       - allowEmptyValue: true
+        description: Optional RBD namespace within the pool. Provides logical isolation
+          of images. When specified, operations are scoped to that namespace. If omitted,
+          the default namespace is used.
         in: query
         name: namespace
         schema:
@@ -2104,12 +2130,13 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Delete a group snapshot
+      summary: Delete a group snapshot. This removes the snapshot for all images in
+        the group.
       tags:
       - RbdGroupSnapshot
     get:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing the group
         in: path
         name: pool_name
         required: true
@@ -2121,13 +2148,16 @@ paths:
         required: true
         schema:
           type: string
-      - description: Name of the snapshot
+      - description: Name of the snapshot to retrieve
         in: path
         name: snapshot_name
         required: true
         schema:
           type: string
       - allowEmptyValue: true
+        description: Optional RBD namespace within the pool. Provides logical isolation
+          of images. When specified, operations are scoped to that namespace. If omitted,
+          the default namespace is used.
         in: query
         name: namespace
         schema:
@@ -2178,12 +2208,12 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Get group snapshot information
+      summary: Get detailed information about a specific group snapshot
       tags:
       - RbdGroupSnapshot
     put:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing the group
         in: path
         name: pool_name
         required: true
@@ -2207,6 +2237,9 @@ paths:
             schema:
               properties:
                 namespace:
+                  description: Optional RBD namespace within the pool. Provides logical
+                    isolation of images. When specified, operations are scoped to
+                    that namespace. If omitted, the default namespace is used.
                   type: string
                 new_snap_name:
                   description: New name for the snapshot
@@ -2236,25 +2269,25 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Update a group snapshot
+      summary: Rename a group snapshot
       tags:
       - RbdGroupSnapshot
   /api/block/pool/{pool_name}/group/{group_name}/snap/{snapshot_name}/rollback:
     post:
       parameters:
-      - description: Name of the pool
+      - description: Name of the pool containing the group
         in: path
         name: pool_name
         required: true
         schema:
           type: string
-      - description: Name of the group
+      - description: Name of the group to rollback
         in: path
         name: group_name
         required: true
         schema:
           type: string
-      - description: Name of the snapshot
+      - description: Name of the snapshot to rollback to
         in: path
         name: snapshot_name
         required: true
@@ -2266,6 +2299,9 @@ paths:
             schema:
               properties:
                 namespace:
+                  description: Optional RBD namespace within the pool. Provides logical
+                    isolation of images. When specified, operations are scoped to
+                    that namespace. If omitted, the default namespace is used.
                   type: string
               type: object
       responses:
@@ -2290,7 +2326,8 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Rollback group to snapshot
+      summary: Rollback all images in the group to their state at the time of the
+        snapshot
       tags:
       - RbdGroupSnapshot
   /api/block/pool/{pool_name}/namespace:
@@ -2516,43 +2553,34 @@ paths:
       tags:
       - Cephfs
   /api/cephfs/mirror:
-    get:
-      parameters:
-      - description: File system name
-        in: query
-        name: fs_name
-        required: true
-        schema:
-          type: string
+    post:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                fs_name:
+                  description: File system name
+                  type: string
+                token:
+                  description: Bootstrap token
+                  type: string
+              required:
+              - fs_name
+              - token
+              type: object
       responses:
-        '200':
+        '201':
           content:
             application/vnd.ceph.api.v1.0+json:
-              schema:
-                items:
-                  properties:
-                    uuid:
-                      description: Peer ID
-                      properties:
-                        client_name:
-                          description: Ceph client name
-                          type: string
-                        fs_name:
-                          description: File system name
-                          type: string
-                        site_name:
-                          description: Remote site name
-                          type: string
-                      required:
-                      - client_name
-                      - site_name
-                      - fs_name
-                      type: object
-                  type: object
-                required:
-                - uuid
-                type: array
-          description: OK
+              type: object
+          description: Resource created.
+        '202':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              type: object
+          description: Operation is still executing. Please check the task queue.
         '400':
           description: Operation exception. Please check the response body for details.
         '401':
@@ -2564,7 +2592,7 @@ paths:
             trace.
       security:
       - jwt: []
-      summary: Get peers
+      summary: Create bootstrap peer
       tags:
       - CephfsMirror
   /api/cephfs/mirror/daemon-status:
@@ -2661,6 +2689,145 @@ paths:
       security:
       - jwt: []
       summary: Get mirror daemon and peers information
+      tags:
+      - CephfsMirror
+  /api/cephfs/mirror/token:
+    post:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                client_name:
+                  description: Client entity's name
+                  type: string
+                fs_name:
+                  description: File system name
+                  type: string
+                site_name:
+                  description: Site name
+                  type: string
+              required:
+              - fs_name
+              - client_name
+              - site_name
+              type: object
+      responses:
+        '201':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              type: object
+          description: Resource created.
+        '202':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              type: object
+          description: Operation is still executing. Please check the task queue.
+        '400':
+          description: Operation exception. Please check the response body for details.
+        '401':
+          description: Unauthenticated access. Please login first.
+        '403':
+          description: Unauthorized access. Please check your permissions.
+        '500':
+          description: Unexpected error. Please check the response body for the stack
+            trace.
+      security:
+      - jwt: []
+      summary: Create bootstrap token
+      tags:
+      - CephfsMirror
+  /api/cephfs/mirror/{fs_name}:
+    get:
+      parameters:
+      - description: File system name
+        in: path
+        name: fs_name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              schema:
+                items:
+                  properties:
+                    uuid:
+                      description: Peer ID
+                      properties:
+                        client_name:
+                          description: Ceph client name
+                          type: string
+                        fs_name:
+                          description: File system name
+                          type: string
+                        site_name:
+                          description: Remote site name
+                          type: string
+                      required:
+                      - client_name
+                      - site_name
+                      - fs_name
+                      type: object
+                  type: object
+                required:
+                - uuid
+                type: array
+          description: OK
+        '400':
+          description: Operation exception. Please check the response body for details.
+        '401':
+          description: Unauthenticated access. Please login first.
+        '403':
+          description: Unauthorized access. Please check your permissions.
+        '500':
+          description: Unexpected error. Please check the response body for the stack
+            trace.
+      security:
+      - jwt: []
+      summary: Get peers
+      tags:
+      - CephfsMirror
+  /api/cephfs/mirror/{fs_name}/{peer_uuid}:
+    delete:
+      parameters:
+      - description: File system name
+        in: path
+        name: fs_name
+        required: true
+        schema:
+          type: string
+      - description: Peer UUID
+        in: path
+        name: peer_uuid
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              type: object
+          description: Operation is still executing. Please check the task queue.
+        '204':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              type: object
+          description: Resource deleted.
+        '400':
+          description: Operation exception. Please check the response body for details.
+        '401':
+          description: Unauthenticated access. Please login first.
+        '403':
+          description: Unauthorized access. Please check your permissions.
+        '500':
+          description: Unexpected error. Please check the response body for the stack
+            trace.
+      security:
+      - jwt: []
+      summary: Delete peer
       tags:
       - CephfsMirror
   /api/cephfs/remove/{name}:
@@ -5514,6 +5681,9 @@ paths:
                   cephfs:
                     description: ''
                     type: boolean
+                  dashboard:
+                    description: ''
+                    type: boolean
                   iscsi:
                     description: ''
                     type: boolean
@@ -5536,6 +5706,7 @@ paths:
                 - cephfs
                 - rgw
                 - nfs
+                - dashboard
                 type: object
           description: OK
         '400':
@@ -9327,7 +9498,7 @@ paths:
           type: string
       - allowEmptyValue: true
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9387,7 +9558,7 @@ paths:
           type: string
       - allowEmptyValue: true
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9420,7 +9591,7 @@ paths:
           type: string
       - allowEmptyValue: true
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9454,7 +9625,7 @@ paths:
                   type: string
                 log_level:
                   type: string
-                traddr:
+                server_address:
                   type: string
               required:
               - log_level
@@ -9494,7 +9665,7 @@ paths:
           type: string
       - allowEmptyValue: true
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9527,7 +9698,7 @@ paths:
           type: string
       - allowEmptyValue: true
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9550,6 +9721,76 @@ paths:
       summary: Get the version of the NVMeoF gateway
       tags:
       - NVMe-oF Gateway
+  /api/nvmeof/gateway_group/{gw_group}/namespace:
+    get:
+      parameters:
+      - description: NVMeoF gateway group
+        in: path
+        name: gw_group
+        required: true
+        schema:
+          type: string
+      - allowEmptyValue: true
+        description: NVMeoF gateway address
+        in: query
+        name: server_address
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              type: object
+          description: OK
+        '400':
+          description: Operation exception. Please check the response body for details.
+        '401':
+          description: Unauthenticated access. Please login first.
+        '403':
+          description: Unauthorized access. Please check your permissions.
+        '500':
+          description: Unexpected error. Please check the response body for the stack
+            trace.
+      security:
+      - jwt: []
+      summary: List all NVMeoF namespaces in a gateway group
+      tags:
+      - NVMe-oF Gateway
+  /api/nvmeof/gateway_group/{gw_group}/namespace/list:
+    get:
+      parameters:
+      - description: NVMeoF gateway group
+        in: path
+        name: gw_group
+        required: true
+        schema:
+          type: string
+      - allowEmptyValue: true
+        description: NVMeoF gateway address
+        in: query
+        name: server_address
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              type: object
+          description: OK
+        '400':
+          description: Operation exception. Please check the response body for details.
+        '401':
+          description: Unauthenticated access. Please login first.
+        '403':
+          description: Unauthorized access. Please check your permissions.
+        '500':
+          description: Unexpected error. Please check the response body for the stack
+            trace.
+      security:
+      - jwt: []
+      summary: List all NVMeoF namespaces in a gateway group
+      tags:
+      - NVMe-oF Gateway
   /api/nvmeof/spdk/log_level:
     get:
       parameters:
@@ -9565,7 +9806,7 @@ paths:
           type: string
       - allowEmptyValue: true
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9603,7 +9844,7 @@ paths:
                   type: string
                 print_level:
                   type: string
-                traddr:
+                server_address:
                   type: string
               type: object
       responses:
@@ -9643,7 +9884,7 @@ paths:
                   type: string
                 gw_group:
                   type: string
-                traddr:
+                server_address:
                   type: string
               type: object
       responses:
@@ -9681,7 +9922,7 @@ paths:
           type: string
       - allowEmptyValue: true
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9734,7 +9975,7 @@ paths:
                 serial_number:
                   description: Subsystem serial number
                   type: integer
-                traddr:
+                server_address:
                   description: NVMeoF gateway address
                   type: string
               required:
@@ -9787,8 +10028,9 @@ paths:
         schema:
           type: string
       - allowEmptyValue: true
+        description: NVMeoF gateway address
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9831,8 +10073,9 @@ paths:
         schema:
           type: string
       - allowEmptyValue: true
+        description: NVMeoF gateway address
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9871,8 +10114,9 @@ paths:
         schema:
           type: string
       - allowEmptyValue: true
+        description: NVMeoF gateway address
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9917,8 +10161,9 @@ paths:
         schema:
           type: string
       - allowEmptyValue: true
+        description: NVMeoF gateway address
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -9964,7 +10209,8 @@ paths:
                   type: string
                 psk:
                   type: string
-                traddr:
+                server_address:
+                  description: NVMeoF gateway address
                   type: string
               required:
               - host_nqn
@@ -10016,8 +10262,9 @@ paths:
         schema:
           type: string
       - allowEmptyValue: true
+        description: NVMeoF gateway address
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -10061,8 +10308,9 @@ paths:
         schema:
           type: string
       - allowEmptyValue: true
+        description: NVMeoF gateway address
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -10107,6 +10355,9 @@ paths:
                   type: string
                 host_name:
                   description: NVMeoF hostname
+                  type: string
+                server_address:
+                  description: NVMeoF gateway address
                   type: string
                 traddr:
                   description: NVMeoF transport address
@@ -10188,6 +10439,12 @@ paths:
         name: gw_group
         schema:
           type: string
+      - allowEmptyValue: true
+        description: NVMeoF gateway address
+        in: query
+        name: server_address
+        schema:
+          type: string
       responses:
         '202':
           content:
@@ -10235,8 +10492,9 @@ paths:
         schema:
           type: string
       - allowEmptyValue: true
+        description: NVMeoF gateway address
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -10300,6 +10558,7 @@ paths:
                   description: Namespace will be visible only for the allowed hosts
                   type: boolean
                 nsid:
+                  description: Create RBD image
                   type: string
                 rbd_image_name:
                   description: RBD image name
@@ -10315,12 +10574,12 @@ paths:
                   default: false
                   description: Read only namespace
                   type: string
+                server_address:
+                  description: NVMeoF gateway address
+                  type: string
                 size:
                   description: Deprecated. Use `rbd_image_size` instead
                   type: integer
-                traddr:
-                  description: Target gateway address
-                  type: string
                 trash_image:
                   default: false
                   description: Trash the RBD image when namespace is removed
@@ -10368,6 +10627,12 @@ paths:
         required: true
         schema:
           type: string
+      - default: 'false'
+        description: Force remove the RBD image
+        in: query
+        name: force
+        schema:
+          type: string
       - allowEmptyValue: true
         description: NVMeoF gateway group
         in: query
@@ -10375,14 +10640,9 @@ paths:
         schema:
           type: string
       - allowEmptyValue: true
+        description: NVMeoF gateway address
         in: query
-        name: traddr
-        schema:
-          type: string
-      - default: 'false'
-        description: Force remove the RBD image
-        in: query
-        name: force
+        name: server_address
         schema:
           type: string
       responses:
@@ -10431,8 +10691,9 @@ paths:
         schema:
           type: string
       - allowEmptyValue: true
+        description: NVMeoF gateway address
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -10492,7 +10753,8 @@ paths:
                 rw_mbytes_per_second:
                   description: Read/Write MB/s
                   type: integer
-                traddr:
+                server_address:
+                  description: NVMeoF gateway address
                   type: string
                 trash_image:
                   description: Trash RBD image after removing namespace
@@ -10551,7 +10813,7 @@ paths:
                 host_nqn:
                   description: NVMeoF host NQN. Use "*" to allow any host.
                   type: string
-                traddr:
+                server_address:
                   description: NVMeoF gateway address
                   type: string
               required:
@@ -10608,7 +10870,7 @@ paths:
                 load_balancing_group:
                   description: Load balancing group
                   type: integer
-                traddr:
+                server_address:
                   description: NVMeoF gateway address
                   type: string
               type: object
@@ -10662,11 +10924,12 @@ paths:
                   type: boolean
                 force:
                   default: false
+                  description: True if visible to all hosts
                   type: boolean
                 gw_group:
                   description: NVMeoF gateway group
                   type: string
-                traddr:
+                server_address:
                   description: NVMeoF gateway address
                   type: string
               required:
@@ -10724,7 +10987,7 @@ paths:
                 host_nqn:
                   description: NVMeoF host NQN. Use "*" to allow any host.
                   type: string
-                traddr:
+                server_address:
                   description: NVMeoF gateway address
                   type: string
               required:
@@ -10777,8 +11040,9 @@ paths:
         schema:
           type: string
       - allowEmptyValue: true
+        description: NVMeoF gateway address
         in: query
-        name: traddr
+        name: server_address
         schema:
           type: string
       responses:
@@ -10824,7 +11088,7 @@ paths:
                 gw_group:
                   description: NVMeoF gateway group
                   type: string
-                traddr:
+                server_address:
                   description: NVMeoF gateway address
                   type: string
               type: object
@@ -10879,7 +11143,7 @@ paths:
                 rbd_image_size:
                   description: RBD image size
                   type: integer
-                traddr:
+                server_address:
                   description: NVMeoF gateway address
                   type: string
               required:
@@ -10937,7 +11201,7 @@ paths:
                 gw_group:
                   description: NVMeoF gateway group
                   type: string
-                traddr:
+                server_address:
                   description: NVMeoF gateway address
                   type: string
               required:
@@ -11004,7 +11268,7 @@ paths:
                 rw_mbytes_per_second:
                   description: Read/Write MB/s
                   type: integer
-                traddr:
+                server_address:
                   description: NVMeoF gateway address
                   type: string
                 w_mbytes_per_second:
@@ -11062,7 +11326,7 @@ paths:
                 rbd_trash_image_on_delete:
                   description: True if active
                   type: boolean
-                traddr:
+                server_address:
                   description: NVMeoF gateway address
                   type: string
               required:
@@ -15920,6 +16184,9 @@ paths:
                   type: boolean
                 secret_key:
                   type: string
+                tier_type:
+                  default: ''
+                  type: string
                 zone_endpoints:
                   type: string
                 zone_name:
@@ -16289,6 +16556,9 @@ paths:
                   default: ''
                   type: string
                 storage_class:
+                  default: ''
+                  type: string
+                tier_type:
                   default: ''
                   type: string
                 zone_endpoints:
@@ -16998,6 +17268,172 @@ paths:
             application/vnd.ceph.api.v1.0+json:
               type: object
           description: Operation is still executing. Please check the task queue.
+        '400':
+          description: Operation exception. Please check the response body for details.
+        '401':
+          description: Unauthenticated access. Please login first.
+        '403':
+          description: Unauthorized access. Please check your permissions.
+        '500':
+          description: Unexpected error. Please check the response body for the stack
+            trace.
+      security:
+      - jwt: []
+      tags:
+      - Service
+  /api/service/certificate:
+    get:
+      description: "\n        List all certificates configured in the cluster.\n\n\
+        \        This endpoint returns a list of all certificates managed by certmgr,\n\
+        \        including both user-provided and cephadm-signed certificates.\n\n\
+        \        :param status: Filter by certificate status. Valid values: 'expired',\n\
+        \            'expiring', 'valid', 'invalid'\n        :param scope: Filter\
+        \ by certificate scope. Valid values: 'SERVICE',\n            'HOST', 'GLOBAL'\n\
+        \        :param service_type: Filter by service type. Supports wildcards\n\
+        \            (e.g., 'rgw*')\n        :param include_cephadm_signed: If True,\
+        \ include cephadm-signed certificates.\n            If False (default), only\
+        \ user-provided certificates are returned.\n        :return: List of certificate\
+        \ objects with their details\n        "
+      parameters:
+      - allowEmptyValue: true
+        description: Filter by certificate status (e.g., "expired", "expiring", "valid",
+          "invalid")
+        in: query
+        name: status
+        schema:
+          type: string
+      - allowEmptyValue: true
+        description: Filter by certificate scope (e.g., "service", "host", "global")
+        in: query
+        name: scope
+        schema:
+          type: string
+      - allowEmptyValue: true
+        description: Filter by certificate type (e.g., "rgw*")
+        in: query
+        name: service_type
+        schema:
+          type: string
+      - default: false
+        description: 'Include cephadm-signed certificates in the list (default: False)'
+        in: query
+        name: include_cephadm_signed
+        schema:
+          type: boolean
+      responses:
+        '200':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              schema:
+                items:
+                  properties:
+                    cert_name:
+                      description: Certificate name
+                      type: string
+                    common_name:
+                      description: Certificate common name (CN)
+                      type: string
+                    days_to_expiration:
+                      description: Days remaining until expiration
+                      type: integer
+                    expiry_date:
+                      description: Certificate expiration date
+                      type: string
+                    issuer:
+                      description: Certificate issuer distinguished name
+                      type: string
+                    scope:
+                      description: Certificate scope (SERVICE, HOST, or GLOBAL)
+                      type: string
+                    signed_by:
+                      description: Certificate issuer (user or cephadm)
+                      type: string
+                    status:
+                      description: Certificate status (valid, expiring, expired, invalid)
+                      type: string
+                    target:
+                      description: Certificate target (service name or hostname)
+                      type: string
+                  type: object
+                required:
+                - cert_name
+                - scope
+                - signed_by
+                - status
+                - days_to_expiration
+                - expiry_date
+                - issuer
+                - common_name
+                - target
+                type: array
+          description: OK
+        '400':
+          description: Operation exception. Please check the response body for details.
+        '401':
+          description: Unauthenticated access. Please login first.
+        '403':
+          description: Unauthorized access. Please check your permissions.
+        '500':
+          description: Unexpected error. Please check the response body for the stack
+            trace.
+      security:
+      - jwt: []
+      summary: List All Certificates
+      tags:
+      - Service
+  /api/service/certificate/root-ca:
+    get:
+      description: "\n        Get the cephadm root CA certificate.\n\n        This\
+        \ endpoint returns the root Certificate Authority (CA) certificate\n     \
+        \   used by cephadm to sign other certificates in the cluster.\n\n       \
+        \ :return: Dictionary with certificate field containing root CA certificate\
+        \ in PEM format\n        "
+      parameters: []
+      responses:
+        '200':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              schema:
+                properties:
+                  certificate:
+                    description: Root CA certificate in PEM format
+                    type: string
+                required:
+                - certificate
+                type: object
+          description: OK
+        '400':
+          description: Operation exception. Please check the response body for details.
+        '401':
+          description: Unauthenticated access. Please login first.
+        '403':
+          description: Unauthorized access. Please check your permissions.
+        '500':
+          description: Unexpected error. Please check the response body for the stack
+            trace.
+      security:
+      - jwt: []
+      summary: Get Root CA Certificate
+      tags:
+      - Service
+  /api/service/certificate/{service_name}:
+    get:
+      description: "\n        Get detailed certificate information for a service.\n\
+        \n        :param service_name: The service name, e.g. 'rgw.myzone'.\n    \
+        \    :return: Detailed certificate information including full certificate\
+        \ details\n        "
+      parameters:
+      - in: path
+        name: service_name
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/vnd.ceph.api.v1.0+json:
+              type: object
+          description: OK
         '400':
           description: Operation exception. Please check the response body for details.
         '401':

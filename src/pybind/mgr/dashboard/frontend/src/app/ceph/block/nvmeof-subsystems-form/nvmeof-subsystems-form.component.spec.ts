@@ -7,28 +7,30 @@ import { ToastrModule } from 'ngx-toastr';
 
 import { NgbActiveModal, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
 
-import { CdFormGroup } from '~/app/shared/forms/cd-form-group';
 import { SharedModule } from '~/app/shared/shared.module';
-import { NvmeofSubsystemsFormComponent } from './nvmeof-subsystems-form.component';
-import { FormHelper } from '~/testing/unit-test-helper';
 import {
-  DEFAULT_MAX_NAMESPACE_PER_SUBSYSTEM,
-  NvmeofService
-} from '~/app/shared/api/nvmeof.service';
+  NvmeofSubsystemsFormComponent,
+  SubsystemPayload
+} from './nvmeof-subsystems-form.component';
+import { NvmeofService } from '~/app/shared/api/nvmeof.service';
+import { NvmeofSubsystemsStepOneComponent } from './nvmeof-subsystem-step-1/nvmeof-subsystem-step-1.component';
+import { GridModule, InputModule } from 'carbon-components-angular';
 
 describe('NvmeofSubsystemsFormComponent', () => {
   let component: NvmeofSubsystemsFormComponent;
   let fixture: ComponentFixture<NvmeofSubsystemsFormComponent>;
   let nvmeofService: NvmeofService;
-  let form: CdFormGroup;
-  let formHelper: FormHelper;
   const mockTimestamp = 1720693470789;
   const mockGroupName = 'default';
+  const mockPayload: SubsystemPayload = {
+    nqn: '',
+    gw_group: mockGroupName
+  };
 
   beforeEach(async () => {
     spyOn(Date, 'now').and.returnValue(mockTimestamp);
     await TestBed.configureTestingModule({
-      declarations: [NvmeofSubsystemsFormComponent],
+      declarations: [NvmeofSubsystemsFormComponent, NvmeofSubsystemsStepOneComponent],
       providers: [NgbActiveModal],
       imports: [
         HttpClientTestingModule,
@@ -36,6 +38,8 @@ describe('NvmeofSubsystemsFormComponent', () => {
         ReactiveFormsModule,
         RouterTestingModule,
         SharedModule,
+        InputModule,
+        GridModule,
         ToastrModule.forRoot()
       ]
     }).compileComponents();
@@ -43,8 +47,6 @@ describe('NvmeofSubsystemsFormComponent', () => {
     fixture = TestBed.createComponent(NvmeofSubsystemsFormComponent);
     component = fixture.componentInstance;
     component.ngOnInit();
-    form = component.subsystemForm;
-    formHelper = new FormHelper(form);
     fixture.detectChanges();
     component.group = mockGroupName;
   });
@@ -61,43 +63,13 @@ describe('NvmeofSubsystemsFormComponent', () => {
 
     it('should be creating request correctly', () => {
       const expectedNqn = 'nqn.2001-07.com.ceph:' + mockTimestamp;
-      component.onSubmit();
+      mockPayload['nqn'] = expectedNqn;
+      component.onSubmit(mockPayload);
       expect(nvmeofService.createSubsystem).toHaveBeenCalledWith({
         nqn: expectedNqn,
-        max_namespaces: DEFAULT_MAX_NAMESPACE_PER_SUBSYSTEM,
-        enable_ha: true,
-        gw_group: mockGroupName
+        gw_group: mockGroupName,
+        enable_ha: true
       });
-    });
-
-    it('should give error on invalid nqn', () => {
-      formHelper.setValue('nqn', 'nqn:2001-07.com.ceph:');
-      component.onSubmit();
-      formHelper.expectError('nqn', 'pattern');
-    });
-
-    it('should give error on invalid max_namespaces', () => {
-      formHelper.setValue('max_namespaces', -56);
-      component.onSubmit();
-      formHelper.expectError('max_namespaces', 'pattern');
-    });
-
-    it(`should not give error on max_namespaces greater than ${DEFAULT_MAX_NAMESPACE_PER_SUBSYSTEM}`, () => {
-      const expectedNqn = 'nqn.2001-07.com.ceph:' + mockTimestamp;
-      formHelper.setValue('max_namespaces', 600);
-      component.onSubmit();
-      expect(nvmeofService.createSubsystem).toHaveBeenCalledWith({
-        nqn: expectedNqn,
-        max_namespaces: DEFAULT_MAX_NAMESPACE_PER_SUBSYSTEM,
-        enable_ha: true,
-        gw_group: mockGroupName
-      });
-    });
-
-    it('should give error on max_namespaces lesser than 1', () => {
-      formHelper.setValue('max_namespaces', 0);
-      component.onSubmit();
-      formHelper.expectError('max_namespaces', 'min');
     });
   });
 });

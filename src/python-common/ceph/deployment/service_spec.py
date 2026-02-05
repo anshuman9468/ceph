@@ -36,10 +36,11 @@ import yaml
 from ceph.deployment.hostspec import HostSpec, SpecValidationError, assert_valid_host
 from ceph.deployment.utils import unwrap_ipv6, valid_addr, verify_non_negative_int
 from ceph.deployment.utils import verify_positive_int, verify_non_negative_number
-from ceph.deployment.utils import verify_boolean, verify_enum
+from ceph.deployment.utils import verify_boolean, verify_enum, verify_int
 from ceph.deployment.utils import parse_combined_pem_file
 from ceph.utils import is_hex
 from ceph.smb import constants as smbconst
+from ceph.smb import network as smbnet
 
 ServiceSpecT = TypeVar('ServiceSpecT', bound='ServiceSpec')
 FuncT = TypeVar('FuncT', bound=Callable)
@@ -873,6 +874,7 @@ class ServiceSpec(object):
         'alertmanager': {'user_cert_allowed': False, 'scope': 'host', 'requires_ca_cert': False},
         'ceph-exporter': {'user_cert_allowed': False, 'scope': 'host', 'requires_ca_cert': False},
         'node-exporter': {'user_cert_allowed': False, 'scope': 'host', 'requires_ca_cert': False},
+        'node-proxy': {'user_cert_allowed': False, 'scope': 'host', 'requires_ca_cert': False},
         # 'loki'        : {'user_cert_allowed': False, 'scope': 'host'},
         # 'promtail'    : {'user_cert_allowed': False, 'scope': 'host'},
         # 'jaeger-agent': {'user_cert_allowed': False, 'scope': 'host'},
@@ -912,6 +914,7 @@ class ServiceSpec(object):
             'jaeger-collector': TracingSpec,
             'jaeger-query': TracingSpec,
             'jaeger-tracing': TracingSpec,
+            'node-proxy': NodeProxySpec,
             SMBSpec.service_type: SMBSpec,
         }.get(service_type, cls)
         if ret == ServiceSpec and not service_type:
@@ -1660,6 +1663,7 @@ class NvmeofServiceSpec(ServiceSpec):
                  max_gws_in_grp: Optional[int] = 16,
                  max_ns_to_change_lb_grp: Optional[int] = 8,
                  abort_on_errors: Optional[bool] = True,
+                 abort_on_update_error: Optional[bool] = True,
                  omap_file_ignore_unlock_errors: Optional[bool] = False,
                  omap_file_lock_on_read: Optional[bool] = True,
                  omap_file_lock_duration: Optional[int] = 20,
@@ -1692,6 +1696,8 @@ class NvmeofServiceSpec(ServiceSpec):
                  max_hosts_per_subsystem: Optional[int] = 128,
                  subsystem_cache_expiration: Optional[int] = 30,
                  force_tls: Optional[bool] = False,
+                 max_message_length_in_mb: Optional[int] = 4,
+                 io_stats_enabled: Optional[bool] = True,
                  server_key: Optional[str] = None,
                  server_cert: Optional[str] = None,
                  client_key: Optional[str] = None,
@@ -1721,6 +1727,8 @@ class NvmeofServiceSpec(ServiceSpec):
                  discovery_addr: Optional[str] = None,
                  discovery_addr_map: Optional[Dict[str, str]] = None,
                  discovery_port: Optional[int] = None,
+                 discovery_bind_retries_limit: Optional[int] = 10,
+                 discovery_bind_sleep_interval: Optional[float] = 0.5,
                  abort_discovery_on_errors: Optional[bool] = True,
                  log_level: Optional[str] = 'INFO',
                  log_files_enabled: Optional[bool] = True,
@@ -1810,6 +1818,8 @@ class NvmeofServiceSpec(ServiceSpec):
         self.verify_listener_ip = verify_listener_ip
         #: ``abort_on_errors`` abort gateway in case of errors
         self.abort_on_errors = abort_on_errors
+        #: ``abort_on_update_error`` abort gateway in case of an error during update
+        self.abort_on_update_error = abort_on_update_error
         #: ``omap_file_ignore_unlock_errors`` ignore errors when unlocking the OMAP file
         self.omap_file_ignore_unlock_errors = omap_file_ignore_unlock_errors
         #: ``omap_file_lock_on_read`` lock omap when reading its content
@@ -1842,6 +1852,10 @@ class NvmeofServiceSpec(ServiceSpec):
         self.subsystem_cache_expiration = subsystem_cache_expiration
         #: ``force_tls`` force using TLS when adding hosts and listeners
         self.force_tls = force_tls
+        #: ``max_message_length_in_mb`` max protobuf message length, in mb
+        self.max_message_length_in_mb = max_message_length_in_mb
+        #: ``io_stats_enabled`` enables controller IO statistics
+        self.io_stats_enabled = io_stats_enabled
         #: ``allowed_consecutive_spdk_ping_failures`` # of ping failures before aborting gateway
         self.allowed_consecutive_spdk_ping_failures = allowed_consecutive_spdk_ping_failures
         #: ``spdk_ping_interval_in_seconds`` sleep interval in seconds between SPDK pings
@@ -1922,6 +1936,10 @@ class NvmeofServiceSpec(ServiceSpec):
         self.discovery_addr_map = discovery_addr_map
         #: ``discovery_port`` port of the discovery service
         self.discovery_port = discovery_port or 8009
+        #: ``discovery_bind_retries_limit`` how many times to keep trying bind the discovery port
+        self.discovery_bind_retries_limit = discovery_bind_retries_limit
+        #: ``discovery_bind_sleep_interval`` seconds to wait between each bind attempt
+        self.discovery_bind_sleep_interval = discovery_bind_sleep_interval
         #: ``abort_discovery_on_errors`` abort discovery service in case of errors
         self.abort_discovery_on_errors = abort_discovery_on_errors
         #: ``log_level`` the nvmeof gateway log level
@@ -2055,6 +2073,7 @@ class NvmeofServiceSpec(ServiceSpec):
         verify_non_negative_int(self.max_ns_to_change_lb_grp,
                                 "Max namespaces to change load balancing group")
         verify_boolean(self.abort_on_errors, "Abort gateway on errors")
+        verify_boolean(self.abort_on_update_error, "Abort gateway on an update error")
         verify_boolean(self.omap_file_ignore_unlock_errors, "Ignore OMAP file unlock errors")
         verify_boolean(self.omap_file_lock_on_read, "Lock OMAP on read")
         verify_non_negative_int(self.omap_file_lock_duration, "OMAP file lock duration")
@@ -2081,9 +2100,14 @@ class NvmeofServiceSpec(ServiceSpec):
         verify_non_negative_number(self.subsystem_cache_expiration,
                                    "Subsystem cache expiration period")
         verify_boolean(self.force_tls, "Force TLS")
+        verify_positive_int(self.max_message_length_in_mb, "Max protocol message length")
+        verify_boolean(self.io_stats_enabled, "Enable IO statistics")
         verify_non_negative_number(self.monitor_timeout, "Monitor timeout")
         verify_non_negative_int(self.port, "Port")
         verify_non_negative_int(self.discovery_port, "Discovery port")
+        verify_int(self.discovery_bind_retries_limit, "Discovery port bind retries limit")
+        verify_non_negative_number(self.discovery_bind_sleep_interval,
+                                   "Sleep between discovery port bind retries")
         verify_boolean(self.abort_discovery_on_errors, "Abort discovery service on errors")
         verify_non_negative_int(self.prometheus_port, "Prometheus port")
         verify_non_negative_int(self.prometheus_stats_interval, "Prometheus stats interval")
@@ -3584,29 +3608,13 @@ class SMBClusterBindIPSpec:
         self.validate()
 
     def validate(self) -> None:
-        if self.address and self.network:
-            raise SpecValidationError('only one of address or network may be given')
-        if not (self.address or self.network):
-            raise SpecValidationError('one of address or network is required')
-        if self.address:
-            # verify that address is an address
-            try:
-                ip_address(self.address)
-            except ValueError as err:
-                raise SpecValidationError(
-                    f'Cannot parse address {self.address}'
-                ) from err
-        # but we internallly store a list of networks
-        # this is slight bit of YAGNI violation, but I actually plan on
-        # adding IP ranges soon.
-        addr = self.network if self.network else self.address
         try:
-            assert addr
-            self._networks = [ip_network(addr)]
+            netval = smbnet.to_network(
+                network=self.network, address=self.address
+            )
+            self._networks = [netval]
         except ValueError as err:
-            raise SpecValidationError(
-                f'Cannot parse network address {addr}'
-            ) from err
+            raise SpecValidationError(str(err)) from err
 
     def as_networks(self) -> List[Union[IPv4Network, IPv6Network]]:
         """Return a list of one or more IPv4 or IPv6 network objects."""
@@ -3871,6 +3879,17 @@ class SMBSpec(ServiceSpec):
         if spec and spec.get('bind_addrs'):
             spec['bind_addrs'] = [a.to_json() for a in spec['bind_addrs']]
         return obj
+
+
+class NodeProxySpec(ServiceSpec):
+    def __init__(self,
+                 service_type: str,
+                 placement: Optional[PlacementSpec] = None,
+                 ) -> None:
+        assert service_type == 'node-proxy'
+        super(NodeProxySpec, self).__init__('node-proxy', placement=placement)
+        self.ssl: bool = True
+        self.validate()
 
 
 yaml.add_representer(SMBSpec, ServiceSpec.yaml_representer)
